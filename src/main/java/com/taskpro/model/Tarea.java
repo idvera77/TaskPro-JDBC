@@ -1,5 +1,8 @@
 package com.taskpro.model;
 
+import com.taskpro.model.enums.EstadoTarea;
+import com.taskpro.model.enums.Prioridad;
+
 import java.time.LocalDate;
 
 public class Tarea {
@@ -7,13 +10,14 @@ public class Tarea {
     private long proyectoId;
     private String titulo;
     private String descripcion;
-    private String prioridad;
-    private String estado;
+    private Prioridad prioridad;
+    private EstadoTarea estado;
     private LocalDate fechaLimite;
 
-    // 1. Constructor para Tareas que ya existen (vienen de la BD)
+    // 1. Constructor para traer Tareas que ya existen
     public Tarea(long id, long proyectoId, String titulo, String descripcion,
-                 String prioridad, String estado, LocalDate fechaLimite) {
+                 Prioridad prioridad, EstadoTarea estado,
+                 LocalDate fechaLimite) {
         this.id = id;
         this.proyectoId = proyectoId;
         this.titulo = titulo;
@@ -23,9 +27,9 @@ public class Tarea {
         this.fechaLimite = fechaLimite;
     }
 
-    // 2. Constructor para Tareas nuevas
+    // 2. Constructor para crear Tareas nuevas
     public Tarea(long proyectoId, String titulo, String descripcion,
-                 String prioridad, String estado, LocalDate fechaLimite) {
+                 Prioridad prioridad, EstadoTarea estado, LocalDate fechaLimite) {
         this.proyectoId = proyectoId;
         this.titulo = titulo;
         this.descripcion = descripcion;
@@ -36,7 +40,63 @@ public class Tarea {
 
     // 3. Constructor "Rápido" (Solo lo esencial)
     public Tarea(long proyectoId, String titulo, String descripcion, LocalDate fechaLimite) {
-        this(proyectoId, titulo, descripcion, "MEDIA", "BACKLOG", fechaLimite);
+        this(proyectoId, titulo, descripcion, Prioridad.MEDIA, EstadoTarea.BACKLOG,
+                fechaLimite);
     }
 
+    public long getProyectoId() {
+        return proyectoId;
+    }
+
+    public void setProyectoId(long proyectoId) {
+        this.proyectoId = proyectoId;
+    }
+
+    public long getId() {
+        return id;
+    }
+
+    public void setId(long id) {
+        this.id = id;
+    }
+
+    public String getTitulo() {
+        return titulo;
+    }
+
+    public void setTitulo(String titulo) {
+        this.titulo = titulo;
+    }
+
+    public String getDescripcion() {
+        return descripcion;
+    }
+
+    public void setDescripcion(String descripcion) {
+        this.descripcion = descripcion;
+    }
+
+    public Prioridad getPrioridad() {
+        return prioridad;
+    }
+
+    public void setPrioridad(Prioridad prioridad) {
+        this.prioridad = prioridad;
+    }
+
+    public EstadoTarea getEstado() {
+        return estado;
+    }
+
+    public void setEstado(EstadoTarea estado) {
+        this.estado = estado;
+    }
+
+    public LocalDate getFechaLimite() {
+        return fechaLimite;
+    }
+
+    public void setFechaLimite(LocalDate fechaLimite) {
+        this.fechaLimite = fechaLimite;
+    }
 }
