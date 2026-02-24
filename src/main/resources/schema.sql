@@ -55,3 +55,11 @@ CREATE TABLE IF NOT EXISTS historial_tareas
     fecha    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (tarea_id) REFERENCES tareas (id) ON DELETE CASCADE
 );
+
+-- -----------------------------------------------------
+-- INSERCIÓN DE DATOS BASE (SEEDING)
+-- -----------------------------------------------------
+INSERT IGNORE INTO roles (nombre) VALUES ('ADMINISTRADOR');
+INSERT IGNORE INTO roles (nombre) VALUES ('USUARIO');
+INSERT IGNORE INTO roles (nombre) VALUES ('INVITADO');
+INSERT IGNORE INTO roles (nombre) VALUES ('GESTOR');

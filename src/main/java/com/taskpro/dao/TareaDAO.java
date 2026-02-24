@@ -23,7 +23,7 @@ public class TareaDAO {
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            // Cambiamos cada "?" por el dato correspondiente de la tarea.
+            // Cambiamos cada "?", por el dato correspondiente de la tarea.
             stmt.setLong(1, tarea.getProyectoId());
             stmt.setString(2, tarea.getTitulo());
             stmt.setString(3, tarea.getDescripcion());
@@ -50,7 +50,7 @@ public class TareaDAO {
         List<Tarea> listaDeTareas = new ArrayList<>();
 
         // Queremos todas las columnas (*) de todas las filas de la tabla.
-        String sql = "SELECT * FROM tareas";
+        String sql = "SELECT * FROM tareas ORDER BY id";
 
         // Usamos executeQuery() en lugar de executeUpdate() porque esta vez
         // no estamos modificando la base de datos, solo estamos preguntando.

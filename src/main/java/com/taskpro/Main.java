@@ -1,31 +1,43 @@
 package com.taskpro;
 
+import com.taskpro.dao.RolDAO;
 import com.taskpro.dao.TareaDAO;
+import com.taskpro.dao.UsuarioDAO;
+import com.taskpro.model.Rol;
 import com.taskpro.model.Tarea;
+import com.taskpro.model.Usuario;
 import com.taskpro.model.enums.EstadoTarea;
 import com.taskpro.model.enums.Prioridad;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
 
 public class Main {
     public static void main(String[] args) {
-        TareaDAO dao = new TareaDAO();
-        System.out.println("--- INICIANDO ACTUALIZACIÓN ---");
+        UsuarioDAO usuarioDAO = new UsuarioDAO();
 
-        // 1. Elegimos un ID que sepamos que existe en la BD
-        long idReal = 7; // <-- CAMBIA ESTE NÚMERO POR UNO TUYO QUE EXISTA
+        // 1. Creamos un usuario nuevo. Le asignamos el rolId = 1 (ADMINISTRADOR)
+        Usuario nuevoUsuario = new Usuario(
+                "SuperPepe",
+                "pepe@taskpro.com",
+                "passwordSecreta123",
+                1, // ID del Rol (asegúrate de que existe el 1 en tu tabla roles)
+                LocalDateTime.now()
+        );
 
-        // 2. Creamos un objeto Tarea con ese ID, pero con datos NUEVOS
-        Tarea tareaModificada = new Tarea(idReal, 1, "Título Modificado", "Le" +
-                " he cambiado la descripción", Prioridad.ALTA, EstadoTarea.DONE,
-                LocalDate.now());
-
-        // 3. Se lo mandamos al DAO y escuchamos su respuesta
-        if (dao.actualizar(tareaModificada)) {
-            System.out.println("✅ ÉXITO: La tarea " + idReal + " ha sido actualizada a COMPLETADA.");
+        // 2. Lo guardamos en la base de datos
+        if (usuarioDAO.guardar(nuevoUsuario)) {
+            System.out.println("✅ ¡Usuario guardado con éxito en MySQL!");
         } else {
-            System.out.println("⚠️ AVISO: No se encontró la tarea con ID " + idReal + " o no se pudo actualizar.");
+            System.out.println("❌ Error al guardar el usuario.");
         }
 
+        // 3. Leemos todos los usuarios para comprobar
+        System.out.println("\n--- LISTA DE USUARIOS EN BD ---");
+        List<Usuario> usuarios = usuarioDAO.listarTodos();
+        for (Usuario u : usuarios) {
+            System.out.println(u); // Gracias a tu toString(), esto se verá precioso
+        }
     }
 }

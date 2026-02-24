@@ -99,4 +99,17 @@ public class Tarea {
     public void setFechaLimite(LocalDate fechaLimite) {
         this.fechaLimite = fechaLimite;
     }
+
+    @Override
+    public String toString() {
+        return "Tarea{" +
+                "id=" + id +
+                ", proyectoId=" + proyectoId +
+                ", titulo='" + titulo + '\'' +
+                ", descripcion='" + descripcion + '\'' +
+                ", prioridad=" + prioridad +
+                ", estado=" + estado +
+                ", fechaLimite=" + fechaLimite +
+                '}';
+    }
 }
