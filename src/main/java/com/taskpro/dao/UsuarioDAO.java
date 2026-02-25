@@ -64,4 +64,46 @@ public class UsuarioDAO {
 
         return listaDeUsuarios;
     }
+
+    public boolean eliminar(long id) {
+        String sql = "DELETE FROM usuarios WHERE id = ?";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setLong(1, id);
+
+            int filasAfectadas = stmt.executeUpdate();
+
+            return filasAfectadas > 0;
+
+        } catch (SQLException e) {
+            System.err.println("Error al intentar eliminar el usuario: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean actualizar(Usuario usuario) {
+        String sql = "UPDATE usuarios SET username = ?, email = ?, " +
+                "password_hash = ?, rol_id = ? WHERE id = ?";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, usuario.getUsername());
+            stmt.setString(2, usuario.getEmail());
+            stmt.setString(3, usuario.getPassword());
+            stmt.setLong(4, usuario.getRolId());
+
+            stmt.setLong(5, usuario.getId());
+
+            int filasAfectadas = stmt.executeUpdate();
+
+            return filasAfectadas > 0;
+
+        } catch (SQLException e) {
+            System.err.println("Error al intentar actualizar el usuario: " + e.getMessage());
+            return false;
+        }
+    }
 }
