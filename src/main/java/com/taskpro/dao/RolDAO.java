@@ -28,7 +28,6 @@ public class RolDAO {
                 Rol rolLeido = new Rol(id, rol);
                 listaDeRoles.add(rolLeido);
             }
-
         } catch (SQLException e) {
             System.err.println("Error al intentar leer los roles: " + e.getMessage());
         }

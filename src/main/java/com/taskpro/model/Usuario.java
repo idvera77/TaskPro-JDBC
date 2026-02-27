@@ -10,8 +10,8 @@ public class Usuario {
     private long rolId;
     private LocalDateTime fechaCreacion;
 
-    public Usuario(long id, String username, String email, String password,
-                   long rolId, LocalDateTime fechaCreacion) {
+    public Usuario(long id, String username, String email, String password, long rolId,
+                   LocalDateTime fechaCreacion) {
         this.id = id;
         this.username = username;
         this.email = email;
@@ -20,8 +20,8 @@ public class Usuario {
         this.fechaCreacion = fechaCreacion;
     }
 
-    public Usuario(String username, String email, String password, long rolId
-            , LocalDateTime fechaCreacion) {
+    public Usuario(String username, String email, String password, long rolId,
+                   LocalDateTime fechaCreacion) {
         this.username = username;
         this.email = email;
         this.password = password;

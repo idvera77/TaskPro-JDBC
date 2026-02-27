@@ -9,8 +9,8 @@ public class Proyecto {
     private EstadoProyecto estado;
     private long creadorId;
 
-    public Proyecto(long id, String nombre, String descripcion,
-                    EstadoProyecto estado, long creadorId) {
+    public Proyecto(long id, String nombre, String descripcion, EstadoProyecto estado,
+                    long creadorId) {
         this.id = id;
         this.nombre = nombre;
         this.descripcion = descripcion;

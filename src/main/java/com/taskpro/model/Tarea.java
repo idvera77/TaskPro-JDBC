@@ -15,9 +15,8 @@ public class Tarea {
     private LocalDate fechaLimite;
 
     // 1. Constructor para traer Tareas que ya existen
-    public Tarea(long id, long proyectoId, String titulo, String descripcion,
-                 Prioridad prioridad, EstadoTarea estado,
-                 LocalDate fechaLimite) {
+    public Tarea(long id, long proyectoId, String titulo, String descripcion, Prioridad prioridad,
+                 EstadoTarea estado, LocalDate fechaLimite) {
         this.id = id;
         this.proyectoId = proyectoId;
         this.titulo = titulo;
@@ -28,8 +27,8 @@ public class Tarea {
     }
 
     // 2. Constructor para crear Tareas nuevas
-    public Tarea(long proyectoId, String titulo, String descripcion,
-                 Prioridad prioridad, EstadoTarea estado, LocalDate fechaLimite) {
+    public Tarea(long proyectoId, String titulo, String descripcion, Prioridad prioridad,
+                 EstadoTarea estado, LocalDate fechaLimite) {
         this.proyectoId = proyectoId;
         this.titulo = titulo;
         this.descripcion = descripcion;
@@ -40,8 +39,7 @@ public class Tarea {
 
     // 3. Constructor "Rápido" (Solo lo esencial)
     public Tarea(long proyectoId, String titulo, String descripcion, LocalDate fechaLimite) {
-        this(proyectoId, titulo, descripcion, Prioridad.MEDIA, EstadoTarea.BACKLOG,
-                fechaLimite);
+        this(proyectoId, titulo, descripcion, Prioridad.MEDIA, EstadoTarea.BACKLOG, fechaLimite);
     }
 
     public long getProyectoId() {

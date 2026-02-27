@@ -13,8 +13,8 @@ import java.util.ArrayList;
 public class ProyectoDAO {
 
     public boolean guardar(Proyecto proyecto) {
-        String sql = "INSERT INTO proyectos (nombre, descripcion, estado, " +
-                "creador_id) VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO proyectos (nombre, descripcion, estado, creador_id) VALUES (?, " +
+                "?, ?, ?)";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -25,9 +25,7 @@ public class ProyectoDAO {
             stmt.setLong(4, proyecto.getCreadorId());
 
             int filasAfectadas = stmt.executeUpdate();
-
             return filasAfectadas > 0;
-
         } catch (SQLException e) {
             System.err.println("Error al intentar guardar el proyecto: " + e.getMessage());
             return false;
@@ -36,7 +34,6 @@ public class ProyectoDAO {
 
     public ArrayList<Proyecto> listarTodos() {
         ArrayList<Proyecto> listaDeProyectos = new ArrayList<>();
-
         String sql = "SELECT * FROM proyectos";
 
         try (Connection conn = DatabaseConnection.getConnection();
@@ -47,20 +44,68 @@ public class ProyectoDAO {
                 long id = rs.getLong("id");
                 String nombre = rs.getString("nombre");
                 String descripcion = rs.getString("descripcion");
-                EstadoProyecto estado = EstadoProyecto.valueOf(rs.getString(
-                        "estado"));
+                EstadoProyecto estado = EstadoProyecto.valueOf(rs.getString("estado"));
                 long creadorId = rs.getLong("creador_id");
 
-                Proyecto proyectoLeido = new Proyecto(id, nombre, descripcion,
-                        estado, creadorId);
+                Proyecto proyectoLeido = new Proyecto(id, nombre, descripcion, estado, creadorId);
                 listaDeProyectos.add(proyectoLeido);
             }
-
         } catch (SQLException e) {
             System.err.println("Error al intentar leer los proyectos: " + e.getMessage());
         }
-
         return listaDeProyectos;
+    }
+
+    public ArrayList<Proyecto> listarPorUsuario(long idBusqueda) {
+        ArrayList<Proyecto> listaDeProyectos = new ArrayList<>();
+        String sql = "SELECT * FROM proyectos WHERE creador_id = ?";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setLong(1, idBusqueda);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    long id = rs.getLong("id");
+                    String nombre = rs.getString("nombre");
+                    String descripcion = rs.getString("descripcion");
+                    EstadoProyecto estado = EstadoProyecto.valueOf(rs.getString("estado"));
+                    long creadorId = rs.getLong("creador_id");
+
+                    Proyecto proyectoLeido = new Proyecto(id, nombre, descripcion, estado, creadorId);
+                    listaDeProyectos.add(proyectoLeido);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error al intentar leer los proyectos: " + e.getMessage());
+        }
+        return listaDeProyectos;
+    }
+
+    public Proyecto buscarPorId(long idBusqueda) {
+        Proyecto proyectoEncontrado = null;
+        String sql = "SELECT * FROM proyectos WHERE id = ?";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setLong(1, idBusqueda);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    long id = rs.getLong("id");
+                    String nombre = rs.getString("nombre");
+                    String descripcion = rs.getString("descripcion");
+                    EstadoProyecto estado = EstadoProyecto.valueOf(rs.getString("estado"));
+                    long creadorId = rs.getLong("creador_id");
+
+                    proyectoEncontrado = new Proyecto(id, nombre, descripcion, estado, creadorId);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error al buscar el proyecto por ID: " + e.getMessage());
+        }
+        return proyectoEncontrado;
     }
 
     public boolean eliminar(long id) {
@@ -72,9 +117,7 @@ public class ProyectoDAO {
             stmt.setLong(1, id);
 
             int filasAfectadas = stmt.executeUpdate();
-
             return filasAfectadas > 0;
-
         } catch (SQLException e) {
             System.err.println("Error al intentar eliminar el proyecto: " + e.getMessage());
             return false;
@@ -82,8 +125,8 @@ public class ProyectoDAO {
     }
 
     public boolean actualizar(Proyecto proyecto) {
-        String sql = "UPDATE proyectos SET nombre = ?, descripcion = ?, " +
-                "estado = ?, creador_id = ? WHERE id = ? ";
+        String sql = "UPDATE proyectos SET nombre = ?, descripcion = ?, estado = ?, creador_id = " +
+                "? WHERE id = ? ";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -96,9 +139,7 @@ public class ProyectoDAO {
             stmt.setLong(5, proyecto.getId());
 
             int filasAfectadas = stmt.executeUpdate();
-
             return filasAfectadas > 0;
-
         } catch (SQLException e) {
             System.err.println("Error al intentar actualizar el proyecto: " + e.getMessage());
             return false;
