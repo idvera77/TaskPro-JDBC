@@ -185,6 +185,40 @@ public class TareaDAO {
         return tareaEncontrada;
     }
 
+    public List<Tarea> listarPorUsuario(long usuarioId) {
+        List<Tarea> listaDeTareas = new ArrayList<>();
+        String sql = "SELECT t.* FROM tareas t " +
+                "INNER JOIN tarea_asignaciones ta ON t.id = ta.tarea_id " +
+                "WHERE ta.usuario_id = ?";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setLong(1, usuarioId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    long id = rs.getLong("id");
+                    long proyectoId = rs.getLong("proyecto_id");
+                    String titulo = rs.getString("titulo");
+                    String descripcion = rs.getString("descripcion");
+                    Prioridad prioridad =
+                            Prioridad.valueOf(rs.getString("prioridad").toUpperCase().trim());
+                    EstadoTarea estado =
+                            EstadoTarea.valueOf(rs.getString("estado").toUpperCase().trim());
+                    LocalDate fechaLimite = rs.getDate("fecha_limite").toLocalDate();
+
+                    Tarea tareaLeida = new Tarea(id, proyectoId, titulo, descripcion,
+                            prioridad, estado, fechaLimite);
+                    listaDeTareas.add(tareaLeida);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error al leer las tareas del usuario: " + e.getMessage());
+        }
+        return listaDeTareas;
+    }
+
     public boolean eliminar(long id) {
         // Borra de 'tareas' donde la columna 'id' sea igual a la interrogación.
         String sql = "DELETE FROM tareas WHERE id = ?";
