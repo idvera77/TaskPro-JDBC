@@ -88,4 +88,13 @@ public class Usuario {
                 ", fechaCreacion=" + fechaCreacion +
                 '}';
     }
+
+    public boolean tienePermisoGestion() {
+        return this.rolId == 1 || this.rolId == 2;
+    }
+
+    public boolean esUsuarioOperativo() {
+        // El usuario que solo puede tocar lo suyo es el 3
+        return this.rolId == 3;
+    }
 }

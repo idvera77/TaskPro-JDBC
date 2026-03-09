@@ -254,7 +254,7 @@ public class TareaDAO {
             stmt.setDate(6, java.sql.Date.valueOf(tarea.getFechaLimite()));
             // El hueco 7 es el ID de la tarea que queremos modificar
             stmt.setLong(7, tarea.getId());
-
+    
             int filasAfectadas = stmt.executeUpdate();
             // Devolverá true si encontró el ID y lo modificó, o false si el ID no existía.
             return filasAfectadas > 0;
@@ -262,5 +262,46 @@ public class TareaDAO {
             System.err.println("Error al intentar actualizar la tarea: " + e.getMessage());
             return false;
         }
+    }
+
+    public boolean actualizarEstado(long tareaId, com.taskpro.model.enums.EstadoTarea nuevoEstado) {
+        String sql = "UPDATE tareas SET estado = ? WHERE id = ?";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, nuevoEstado.name());
+            stmt.setLong(2, tareaId);
+
+            int filasAfectadas = stmt.executeUpdate();
+            return filasAfectadas > 0;
+        } catch (java.sql.SQLException e) {
+            System.err.println("Error al actualizar el estado: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public List<String> obtenerHistorial(long tareaId) {
+        List<String> historial = new ArrayList<>();
+        // Traemos el mensaje y la fecha (si tienes columna de fecha, si no, solo el mensaje)
+        String sql = "SELECT mensaje, fecha FROM historial_tareas WHERE tarea_id = ? " +
+                "ORDER BY fecha DESC";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setLong(1, tareaId);
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                // Formateamos una línea bonita para la consola
+                String entrada = "[" + rs.getTimestamp("fecha") + "] " + rs.getString(
+                        "mensaje");
+                historial.add(entrada);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error al obtener el historial: " + e.getMessage());
+        }
+        return historial;
     }
 }

@@ -67,16 +67,16 @@ CREATE TABLE IF NOT EXISTS historial_tareas
 -- 1. ROLES (Deben ir primero porque los usuarios los necesitan)
 INSERT IGNORE INTO roles (id, nombre)
 VALUES (1, 'ADMINISTRADOR'),
-       (2, 'USUARIO'),
-       (3, 'INVITADO'),
-       (4, 'GESTOR');
+       (2, 'GESTOR'),
+       (3, 'USUARIO'),
+       (4, 'INVITADO');
 
 -- 2. USUARIOS (Necesitan que los roles ya existan)
 -- (Contraseñas simuladas)
 INSERT IGNORE INTO usuarios (id, username, email, password_hash, rol_id)
 VALUES (1, 'admin_jefe', 'admin@taskpro.com', 'hash_secreto_123', 1),
-       (2, 'laura_dev', 'laura@taskpro.com', 'hash_secreto_456', 2),
-       (3, 'carlos_gestor', 'carlos@taskpro.com', 'hash_secreto_789', 4);
+       (2, 'carlos_gestor', 'carlos@taskpro.com', 'hash_secreto_789', 2),
+       (3, 'laura_dev', 'laura@taskpro.com', 'hash_secreto_456', 3);
 
 -- 3. PROYECTOS (Necesitan que los usuarios creadores ya existan)
 INSERT IGNORE INTO proyectos (id, nombre, descripcion, estado, creador_id)
