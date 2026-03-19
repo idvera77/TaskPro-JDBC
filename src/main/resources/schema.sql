@@ -22,22 +22,22 @@ CREATE TABLE IF NOT EXISTS usuarios
 CREATE TABLE IF NOT EXISTS proyectos
 (
     id          BIGINT AUTO_INCREMENT PRIMARY KEY,
-    nombre      VARCHAR(100)                               NOT NULL,
+    nombre      VARCHAR(100)                  NOT NULL,
     descripcion TEXT,
-    estado      ENUM ('ACTIVO', 'ARCHIVADO', 'FINALIZADO') NOT NULL DEFAULT 'ACTIVO',
-    creador_id  BIGINT                                     NOT NULL,
+    estado      ENUM ('ACTIVO', 'FINALIZADO') NOT NULL DEFAULT 'ACTIVO',
+    creador_id  BIGINT                        NOT NULL,
     FOREIGN KEY (creador_id) REFERENCES usuarios (id)
 );
 
 CREATE TABLE IF NOT EXISTS tareas
 (
     id           BIGINT AUTO_INCREMENT PRIMARY KEY,
-    proyecto_id  BIGINT                                                    NOT NULL,
-    titulo       VARCHAR(150)                                              NOT NULL,
+    proyecto_id  BIGINT                               NOT NULL,
+    titulo       VARCHAR(150)                         NOT NULL,
     descripcion  TEXT,
-    prioridad    ENUM ('BAJA', 'MEDIA', 'ALTA', 'URGENTE')                 NOT NULL DEFAULT 'MEDIA',
-    estado       ENUM ('BACKLOG', 'TODO', 'IN_PROGRESS', 'REVIEW', 'DONE') NOT NULL DEFAULT 'BACKLOG',
-    fecha_limite DATE                                                      NOT NULL,
+    prioridad    ENUM ('BAJA', 'MEDIA', 'ALTA')       NOT NULL DEFAULT 'MEDIA',
+    estado       ENUM ('TODO', 'IN_PROGRESS', 'DONE') NOT NULL DEFAULT 'TODO',
+    fecha_limite DATE                                 NOT NULL,
     FOREIGN KEY (proyecto_id) REFERENCES proyectos (id) ON DELETE CASCADE
 );
 
@@ -67,47 +67,44 @@ CREATE TABLE IF NOT EXISTS historial_tareas
 -- 1. ROLES (Deben ir primero porque los usuarios los necesitan)
 INSERT IGNORE INTO roles (id, nombre)
 VALUES (1, 'ADMINISTRADOR'),
-       (2, 'GESTOR'),
-       (3, 'USUARIO'),
-       (4, 'INVITADO');
+       (2, 'USUARIO');
 
 -- 2. USUARIOS (Necesitan que los roles ya existan)
 -- (Contraseñas simuladas)
 INSERT IGNORE INTO usuarios (id, username, email, password_hash, rol_id)
 VALUES (1, 'admin_jefe', 'admin@taskpro.com', 'hash_secreto_123', 1),
-       (2, 'carlos_gestor', 'carlos@taskpro.com', 'hash_secreto_789', 2),
-       (3, 'laura_dev', 'laura@taskpro.com', 'hash_secreto_456', 3);
+       (2, 'carlos_gestor', 'carlos@taskpro.com', 'hash_secreto_789', 1),
+       (3, 'laura_dev', 'laura@taskpro.com', 'hash_secreto_456', 2);
 
 -- 3. PROYECTOS (Necesitan que los usuarios creadores ya existan)
 INSERT IGNORE INTO proyectos (id, nombre, descripcion, estado, creador_id)
 VALUES (1, 'Rediseño Web', 'Renovar la landing page corporativa', 'ACTIVO', 3),
        (2, 'Migración Cloud', 'Mover la base de datos a AWS', 'ACTIVO', 1),
-       (3, 'App Móvil v2', 'Nuevas funciones para iOS y Android', 'ARCHIVADO',
+       (3, 'App Móvil v2', 'Nuevas funciones para iOS y Android', 'FINALIZADO',
         3);
 
 -- 4. TAREAS (Necesitan que los proyectos ya existan)
-INSERT IGNORE INTO tareas (id, proyecto_id, titulo, descripcion, prioridad,
-                           estado, fecha_limite)
-VALUES (1, 1, 'Crear mockups de la home',
-        'Diseñar en Figma la nueva estructura', 'ALTA', 'IN_PROGRESS',
+INSERT IGNORE INTO tareas (id, proyecto_id, titulo, descripcion, prioridad, estado, fecha_limite)
+VALUES (1, 1, 'Crear mockups de la home','Diseñar en Figma la nueva estructura',
+        'ALTA', 'IN_PROGRESS',
         '2026-03-10'),
        (2, 1, 'Programar CSS', 'Maquetar los diseños de Figma en código',
         'MEDIA', 'TODO', '2026-03-15'),
        (3, 2, 'Configurar VPC en AWS', 'Crear red privada y subredes seguras',
-        'URGENTE', 'BACKLOG', '2026-03-05'),
-       (4, 2, 'Volcado de datos SQL',
-        'Exportar base de datos antigua e importar', 'ALTA', 'TODO',
+        'ALTA', 'TODO', '2026-03-05'),
+       (4, 2, 'Volcado de datos SQL','Exportar base de datos antigua e importar',
+        'ALTA', 'TODO',
         '2026-03-20'),
-       (5, 1, 'Revisión de textos', 'Comprobar faltas de ortografía', 'BAJA',
-        'DONE', '2026-02-28');
+       (5, 1, 'Revisión de textos', 'Comprobar faltas de ortografía',
+        'BAJA','DONE', '2026-02-28');
 
--- 5. ASIGNACIONES (Necesitan tareas y usuarios)
+-- 5. ASIGNACIONES
 INSERT IGNORE INTO tarea_asignaciones (tarea_id, usuario_id)
-VALUES (1, 2), -- Laura hace los mockups
-       (2, 2), -- Laura maqueta el CSS
-       (3, 1); -- El Admin configura AWS
+VALUES (1, 2),
+       (2, 2),
+       (3, 1);
 
--- 6. HISTORIAL (Necesita tareas)
+-- 6. HISTORIAL
 INSERT IGNORE INTO historial_tareas (tarea_id, mensaje)
 VALUES (1, 'Se ha iniciado el diseño en Figma con la paleta de colores nueva.'),
        (1, 'Primera versión enviada al cliente para revisión.'),

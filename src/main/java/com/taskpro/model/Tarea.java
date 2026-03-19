@@ -14,7 +14,17 @@ public class Tarea {
     private EstadoTarea estado;
     private LocalDate fechaLimite;
 
-    // 1. Constructor para traer Tareas que ya existen
+    /**
+     * Constructor completo para representar una tarea cargada desde la base de datos.
+     *
+     * @param id Identificador único de la tarea.
+     * @param proyectoId ID del proyecto al que pertenece la tarea.
+     * @param titulo Título o nombre de la tarea.
+     * @param descripcion Detalle de las acciones a realizar.
+     * @param prioridad Nivel de importancia (Enum Prioridad).
+     * @param estado Estado actual de progreso (Enum EstadoTarea).
+     * @param fechaLimite Fecha máxima para la finalización.
+     */
     public Tarea(long id, long proyectoId, String titulo, String descripcion, Prioridad prioridad,
                  EstadoTarea estado, LocalDate fechaLimite) {
         this.id = id;
@@ -26,20 +36,19 @@ public class Tarea {
         this.fechaLimite = fechaLimite;
     }
 
-    // 2. Constructor para crear Tareas nuevas
-    public Tarea(long proyectoId, String titulo, String descripcion, Prioridad prioridad,
-                 EstadoTarea estado, LocalDate fechaLimite) {
+    /**
+     * Constructor para la creación de una nueva tarea antes de ser persistida.
+     *
+     * @param proyectoId ID del proyecto al que se asocia la tarea.
+     * @param titulo Título descriptivo de la tarea.
+     * @param descripcion Descripción de la tarea.
+     * @param fechaLimite Fecha establecida como límite.
+     */
+    public Tarea(long proyectoId, String titulo, String descripcion, LocalDate fechaLimite) {
         this.proyectoId = proyectoId;
         this.titulo = titulo;
         this.descripcion = descripcion;
-        this.prioridad = prioridad;
-        this.estado = estado;
         this.fechaLimite = fechaLimite;
-    }
-
-    // 3. Constructor "Rápido" (Solo lo esencial)
-    public Tarea(long proyectoId, String titulo, String descripcion, LocalDate fechaLimite) {
-        this(proyectoId, titulo, descripcion, Prioridad.MEDIA, EstadoTarea.BACKLOG, fechaLimite);
     }
 
     public long getProyectoId() {

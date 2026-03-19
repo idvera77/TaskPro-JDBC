@@ -1,5 +1,6 @@
 package com.taskpro.model;
 
+import com.taskpro.model.enums.NombreRol;
 import java.time.LocalDateTime;
 
 public class Usuario {
@@ -7,25 +8,26 @@ public class Usuario {
     private String username;
     private String email;
     private String password;
-    private long rolId;
+    private NombreRol rol;
     private LocalDateTime fechaCreacion;
 
-    public Usuario(long id, String username, String email, String password, long rolId,
+    /**
+     * Constructor completo para representar un usuario cargado desde la base de datos.
+     *
+     * @param id Identificador único del usuario.
+     * @param username Nombre de usuario para el sistema.
+     * @param email Correo electrónico único.
+     * @param password Contraseña (hash) del usuario.
+     * @param rol Rol asignado (Enum NombreRol).
+     * @param fechaCreacion Fecha y hora de registro en el sistema.
+     */
+    public Usuario(long id, String username, String email, String password, NombreRol rol,
                    LocalDateTime fechaCreacion) {
         this.id = id;
         this.username = username;
         this.email = email;
         this.password = password;
-        this.rolId = rolId;
-        this.fechaCreacion = fechaCreacion;
-    }
-
-    public Usuario(String username, String email, String password, long rolId,
-                   LocalDateTime fechaCreacion) {
-        this.username = username;
-        this.email = email;
-        this.password = password;
-        this.rolId = rolId;
+        this.rol = rol;
         this.fechaCreacion = fechaCreacion;
     }
 
@@ -61,12 +63,12 @@ public class Usuario {
         this.password = password;
     }
 
-    public long getRolId() {
-        return rolId;
+    public NombreRol getRol() {
+        return rol;
     }
 
-    public void setRolId(long rolId) {
-        this.rolId = rolId;
+    public void setRol(NombreRol rol) {
+        this.rol = rol;
     }
 
     public LocalDateTime getFechaCreacion() {
@@ -77,24 +79,22 @@ public class Usuario {
         this.fechaCreacion = fechaCreacion;
     }
 
+    public boolean esAdmin() {
+        return this.rol == NombreRol.ADMINISTRADOR;
+    }
+
+    public boolean esUsuarioEstandar() {
+        return this.rol == NombreRol.USUARIO;
+    }
+
     @Override
     public String toString() {
         return "Usuario{" +
                 "id=" + id +
                 ", username='" + username + '\'' +
-                ", mail='" + email + '\'' +
-                ", password='" + password + '\'' +
-                ", rolId=" + rolId +
+                ", email='" + email + '\'' +
+                ", rol=" + rol +
                 ", fechaCreacion=" + fechaCreacion +
                 '}';
-    }
-
-    public boolean tienePermisoGestion() {
-        return this.rolId == 1 || this.rolId == 2;
-    }
-
-    public boolean esUsuarioOperativo() {
-        // El usuario que solo puede tocar lo suyo es el 3
-        return this.rolId == 3;
     }
 }

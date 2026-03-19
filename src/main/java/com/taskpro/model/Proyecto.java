@@ -9,6 +9,15 @@ public class Proyecto {
     private EstadoProyecto estado;
     private long creadorId;
 
+    /**
+     * Constructor completo para representar un proyecto existente en la base de datos.
+     *
+     * @param id Identificador único del proyecto.
+     * @param nombre Nombre del proyecto.
+     * @param descripcion Descripción detallada del proyecto.
+     * @param estado Estado actual del proyecto (Enum EstadoProyecto).
+     * @param creadorId ID del usuario que creó el proyecto.
+     */
     public Proyecto(long id, String nombre, String descripcion, EstadoProyecto estado,
                     long creadorId) {
         this.id = id;
@@ -18,15 +27,17 @@ public class Proyecto {
         this.creadorId = creadorId;
     }
 
-    public Proyecto(String nombre, String descripcion, EstadoProyecto estado, long creadorId) {
+    /**
+     * Constructor para la creación de un nuevo proyecto
+     *
+     * @param nombre Nombre del proyecto.
+     * @param descripcion Descripción breve de los objetivos.
+     * @param creadorId ID del usuario administrador que registra el proyecto.
+     */
+    public Proyecto(String nombre, String descripcion, long creadorId) {
         this.nombre = nombre;
         this.descripcion = descripcion;
-        this.estado = estado;
         this.creadorId = creadorId;
-    }
-
-    public Proyecto(String nombre, String descripcion, long creadorId) {
-        this(nombre, descripcion, EstadoProyecto.ACTIVO, creadorId);
     }
 
     public long getId() {

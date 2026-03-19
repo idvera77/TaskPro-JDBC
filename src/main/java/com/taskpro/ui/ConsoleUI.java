@@ -7,6 +7,8 @@ import com.taskpro.model.Proyecto;
 import com.taskpro.model.Tarea;
 import com.taskpro.model.Usuario;
 import com.taskpro.model.enums.EstadoProyecto;
+import com.taskpro.model.enums.EstadoTarea;
+import com.taskpro.service.AuthService;
 import com.taskpro.service.ProyectoService;
 import com.taskpro.service.TareaService;
 
@@ -20,7 +22,11 @@ public class ConsoleUI {
     private final TareaDAO tareaDAO;
     private final ProyectoService proyectoService;
     private final TareaService tareaService;
+    private final AuthService authService;
 
+    /**
+     * Constructor que inicializa los servicios, DAOs y el lector de consola.
+     */
     public ConsoleUI() {
         this.scanner = new Scanner(System.in);
         this.usuarioDAO = new UsuarioDAO();
@@ -28,8 +34,12 @@ public class ConsoleUI {
         this.tareaDAO = new TareaDAO();
         this.proyectoService = new ProyectoService();
         this.tareaService = new TareaService();
+        this.authService = new AuthService();
     }
 
+    /**
+     * Lanza el bucle principal de la aplicación (Menú de Bienvenida).
+     */
     public void iniciar() {
         boolean salir = false;
         while (!salir) {
@@ -57,29 +67,35 @@ public class ConsoleUI {
         scanner.close();
     }
 
+    /**
+     * Gestiona el flujo de autenticación solicitando credenciales al usuario.
+     */
     private void login() {
         System.out.println("\n--- INICIO DE SESIÓN ---");
         System.out.print("Introduce tu email: ");
         String email = scanner.nextLine();
+        System.out.print("Introduce tu contraseña: ");
+        String password = scanner.nextLine();
 
-        Usuario usuarioActual = usuarioDAO.buscarPorEmail(email);
+        Usuario usuarioActual = authService.login(email, password);
 
         if (usuarioActual != null) {
-            System.out.println("\nBienvenido/a, " + usuarioActual.getUsername() + "!");
+            System.out.println("\n¡Bienvenido/a, " + usuarioActual.getUsername() + "!");
 
-            // LÓGICA DE DERIVACIÓN PROFESIONAL
-            if (usuarioActual.tienePermisoGestion()) {
+            if (usuarioActual.esAdmin()) {
                 menuGestor(usuarioActual);
             } else {
                 menuUsuarioEstandar(usuarioActual);
             }
-
         } else {
-            System.out.println("\nError: No existe ningún usuario con ese email.");
+            System.out.println("\nError: Credenciales incorrectas.");
         }
     }
 
-    // --- MENÚ PARA ADMIN/GESTOR ---
+    /**
+     * Muestra las opciones exclusivas para usuarios con rol Administrador/Gestor.
+     * @param usuarioActual Usuario autenticado que navega por el menú.
+     */
     private void menuGestor(Usuario usuarioActual) {
         boolean cerrarSesion = false;
         while (!cerrarSesion) {
@@ -87,29 +103,34 @@ public class ConsoleUI {
             System.out.println(" PANEL DE GESTIÓN: " + usuarioActual.getUsername().toUpperCase());
             System.out.println("==================================");
             System.out.println("1. Ver todos los Proyectos");
-            System.out.println("2. Crear Nuevo Proyecto");
-            System.out.println("3. Crear Nueva Tarea");
-            System.out.println("4. Asignar Tarea a Usuario");
-            System.out.println("5. Ver Historial de Auditoría");
-            System.out.println("6. Cambiar Estado de una Tarea");
+            System.out.println("2. Ver todas las Tareas");
+            System.out.println("3. Crear Nuevo Proyecto");
+            System.out.println("4. Crear Nueva Tarea");
+            System.out.println("5. Asignar Tarea a Usuario");
+            System.out.println("6. Ver Historial de Auditoría");
+            System.out.println("7. Actualizar Estado de Proyecto");
             System.out.println("0. Cerrar Sesión");
             System.out.print("> Elige una opción: ");
 
             String opcion = scanner.nextLine();
             switch (opcion) {
                 case "1": mostrarTodosLosProyectos(); break;
-                case "2": menuCrearProyecto(usuarioActual); break;
-                case "3": menuCrearTarea(usuarioActual); break;
-                case "4": menuAsignarTarea(usuarioActual); break;
-                case "5": menuVerHistorial(usuarioActual); break;
-                case "6": menuCambiarEstadoTarea(usuarioActual); break;
+                case "2": mostrarTodasLasTareas(); break;
+                case "3": menuCrearProyecto(usuarioActual); break;
+                case "4": menuCrearTarea(usuarioActual); break;
+                case "5": menuAsignarTarea(usuarioActual); break;
+                case "6": menuVerHistorial(usuarioActual); break;
+                case "7": menuCambiarEstadoProyecto(usuarioActual); break;
                 case "0": cerrarSesion = true; break;
                 default: System.out.println("Opción no válida.");
             }
         }
     }
 
-    // --- MENÚ USUARIO OPERATIVO ---
+    /**
+     * Muestra las opciones para usuarios operativos (ver y actualizar sus tareas).
+     * @param usuarioActual Usuario autenticado que navega por el menú.
+     */
     private void menuUsuarioEstandar(Usuario usuarioActual) {
         boolean cerrarSesion = false;
         while (!cerrarSesion) {
@@ -118,7 +139,6 @@ public class ConsoleUI {
             System.out.println("==================================");
             System.out.println("1. Ver mis Tareas Asignadas");
             System.out.println("2. Actualizar Estado de Tarea");
-            System.out.println("3. Ver mis Proyectos");
             System.out.println("0. Cerrar Sesión");
             System.out.print("> Elige una opción: ");
 
@@ -126,7 +146,6 @@ public class ConsoleUI {
             switch (opcion) {
                 case "1": mostrarTareas(usuarioActual); break;
                 case "2": menuCambiarEstadoTarea(usuarioActual); break;
-                case "3": mostrarProyectos(usuarioActual); break;
                 case "0": cerrarSesion = true; break;
                 default: System.out.println("Opción no válida.");
             }
@@ -158,6 +177,9 @@ public class ConsoleUI {
         }
     }
 
+    /**
+     * Formulario interactivo para registrar un nuevo proyecto en el sistema.
+     */
     private void menuCrearProyecto(Usuario usuarioActual) {
         System.out.println("\n--- CREAR NUEVO PROYECTO ---");
 
@@ -167,16 +189,18 @@ public class ConsoleUI {
         System.out.print("Introduce una descripción: ");
         String descripcion = scanner.nextLine();
 
-        Proyecto nuevoProyecto = new Proyecto(0, nombre, descripcion, EstadoProyecto.ACTIVO, usuarioActual.getId());
+        Proyecto nuevoProyecto = new Proyecto(nombre, descripcion, usuarioActual.getId());
 
         String resultado = proyectoService.crearNuevoProyecto(nuevoProyecto, usuarioActual);
 
         System.out.println("\n" + resultado);
     }
 
+    /**
+     * Formulario para crear tareas vinculándolas a un proyecto existente.
+     */
     private void menuCrearTarea(Usuario usuarioActual) {
         System.out.println("\n--- CREAR NUEVA TAREA ---");
-        // 1. Mostramos los proyectos disponibles
         System.out.println("Primero, necesitas elegir a que proyecto pertenecerá la tarea.");
         mostrarProyectos(usuarioActual);
 
@@ -189,22 +213,11 @@ public class ConsoleUI {
             return;
         }
 
-        // 2. Pedimos los datos de la tarea
         System.out.print("> Introduce el titulo de la tarea: ");
         String titulo = scanner.nextLine();
 
         System.out.print("> Introduce una descripción: ");
         String descripcion = scanner.nextLine();
-
-        System.out.print("> Prioridad (ALTA, MEDIA, BAJA): ");
-        String prioridadInput = scanner.nextLine().toUpperCase().trim();
-        // Por seguridad, si escribe mal, le ponemos MEDIA por defecto
-        com.taskpro.model.enums.Prioridad prioridad = com.taskpro.model.enums.Prioridad.MEDIA;
-        try {
-            prioridad = com.taskpro.model.enums.Prioridad.valueOf(prioridadInput);
-        } catch (IllegalArgumentException e) {
-            System.out.println("Prioridad no reconocida. Se asignara MEDIA por defecto.");
-        }
 
         System.out.print("> Fecha limite (YYYY-MM-DD): ");
         String fechaInput = scanner.nextLine();
@@ -216,25 +229,21 @@ public class ConsoleUI {
             return;
         }
 
-        // 3. Creamos el objeto (Estado por defecto TODO)
-        Tarea nuevaTarea = new Tarea(proyectoId, titulo, descripcion, prioridad,
-                com.taskpro.model.enums.EstadoTarea.TODO, fechaLimite);
+        Tarea nuevaTarea = new Tarea(proyectoId, titulo, descripcion, fechaLimite);
 
-        // 4. Se lo pasamos al Servicio
         String resultado = tareaService.crearNuevaTarea(nuevaTarea, usuarioActual);
-
         System.out.println("\n" + resultado);
     }
 
+    /**
+     * Permite a un administrador asignar una tarea específica a un usuario del sistema.
+     */
     private void menuAsignarTarea(Usuario usuarioActual) {
         System.out.println("\n--- ASIGNAR TAREA A USUARIO ---");
-
-        // 1. Mostrar proyectos para contextualizar
         mostrarTodosLosProyectos();
         System.out.print("\n> Introduce el ID del Proyecto: ");
         long proyectoId = Long.parseLong(scanner.nextLine());
 
-        // 2. Mostrar tareas de ese proyecto
         List<Tarea> tareas = tareaDAO.listarPorProyecto(proyectoId);
         if (tareas.isEmpty()) {
             System.out.println("No hay tareas en este proyecto.");
@@ -252,14 +261,15 @@ public class ConsoleUI {
         System.out.print("\n> ID del USUARIO encargado: ");
         long userAsignadoId = Long.parseLong(scanner.nextLine());
 
-        // 4. Ejecutar asignación
         String resultado = tareaService.asignarUsuarioATarea(tareaId, userAsignadoId, usuarioActual);
         System.out.println("\n" + resultado);
     }
 
+    /**
+     * Gestión de cambio de estado de tareas con validación de asignación.
+     */
     private void menuCambiarEstadoTarea(Usuario usuarioActual) {
         System.out.println("\n--- CAMBIAR ESTADO DE TAREA ---");
-        // Mostrar tareas actuales para facilitar la selección
         mostrarTareas(usuarioActual);
 
         System.out.print("\n> Introduce el ID de la tarea a actualizar: ");
@@ -271,26 +281,56 @@ public class ConsoleUI {
             return;
         }
 
-        System.out.println("Estados disponibles: TODO, IN_PROGRESS, DONE");
+        System.out.println("Estados disponibles: " + java.util.Arrays.toString(EstadoTarea.values()));
         System.out.print("> Escribe el nuevo estado exacto: ");
         String estadoInput = scanner.nextLine().toUpperCase().trim();
 
-        com.taskpro.model.enums.EstadoTarea nuevoEstado;
+        EstadoTarea nuevoEstado;
         try {
-            nuevoEstado = com.taskpro.model.enums.EstadoTarea.valueOf(estadoInput);
+            nuevoEstado = EstadoTarea.valueOf(estadoInput);
         } catch (IllegalArgumentException e) {
             System.out.println("ERROR: El estado '" + estadoInput + "' no es valido. Operación abortada.");
             return;
         }
 
-        // Delegamos toda la responsabilidad de validación al Service
         String resultado = tareaService.cambiarEstadoTarea(tareaId, nuevoEstado, usuarioActual);
         System.out.println("\n" + resultado);
     }
 
+    private void menuCambiarEstadoProyecto(Usuario usuarioActual) {
+        System.out.println("\n--- CAMBIAR ESTADO DE PROYECTO ---");
+        mostrarTodosLosProyectos();
+
+        System.out.print("\n> Introduce el ID del proyecto a actualizar: ");
+        long proyectoId;
+        try {
+            proyectoId = Long.parseLong(scanner.nextLine());
+        } catch (NumberFormatException e) {
+            System.out.println("ERROR: El ID debe ser un formato numérico válido.");
+            return;
+        }
+
+        System.out.println("Estados disponibles: " + java.util.Arrays.toString(EstadoProyecto.values()));
+        System.out.print("> Escribe el nuevo estado exacto: ");
+        String estadoInput = scanner.nextLine().toUpperCase().trim();
+
+        EstadoProyecto nuevoEstado;
+        try {
+            nuevoEstado = EstadoProyecto.valueOf(estadoInput);
+        } catch (IllegalArgumentException e) {
+            System.out.println("ERROR: El estado '" + estadoInput + "' no es válido. Operación abortada.");
+            return;
+        }
+
+        String resultado = proyectoService.cambiarEstadoProyecto(proyectoId, nuevoEstado, usuarioActual);
+        System.out.println("\n" + resultado);
+    }
+
+    /**
+     * Módulo de auditoría para visualizar el histórico de cambios de una tarea.
+     */
     private void menuVerHistorial(Usuario usuarioActual) {
         System.out.println("\n--- MÓDULO DE AUDITORÍA ---");
-        // 1. Mostrar todos los proyectos para que elija uno
         mostrarTodosLosProyectos();
         System.out.print("\n> Introduce el ID del Proyecto para ver sus tareas: ");
         long proyectoId;
@@ -301,7 +341,6 @@ public class ConsoleUI {
             return;
         }
 
-        // 2. Mostrar todas las tareas de ese proyecto
         System.out.println("\n--- TAREAS DEL PROYECTO " + proyectoId + " ---");
         List<Tarea> tareas = tareaDAO.listarPorProyecto(proyectoId);
 
@@ -314,7 +353,6 @@ public class ConsoleUI {
             System.out.println("ID: " + t.getId() + " | Título: " + t.getTitulo() + " | Estado: " + t.getEstado());
         }
 
-        // 3. Ahora que ve las tareas, pedimos el ID para el historial
         System.out.print("\n> Introduce el ID de la Tarea para ver su historial: ");
         long tareaId;
         try {
@@ -324,7 +362,6 @@ public class ConsoleUI {
             return;
         }
 
-        // 4. Llamamos al servicio para obtener los logs
         List<String> logs = tareaService.consultarHistorialTarea(tareaId, usuarioActual);
 
         if (logs == null) {
@@ -340,6 +377,9 @@ public class ConsoleUI {
         }
     }
 
+    /**
+     * Imprime en consola todos los proyectos registrados.
+     */
     private void mostrarTodosLosProyectos() {
         System.out.println("\n--- VISIÓN GLOBAL DE PROYECTOS ---");
         List<Proyecto> proyectos = proyectoDAO.listarTodos();
@@ -356,6 +396,29 @@ public class ConsoleUI {
         }
     }
 
+    /**
+     * Imprime todas las tareas del sistema con formato de tabla simple.
+     */
+    private void mostrarTodasLasTareas() {
+        System.out.println("\n--- VISIÓN GLOBAL DE TAREAS ---");
+        List<Tarea> tareas = tareaDAO.listarTodas();
+
+        if (tareas.isEmpty()) {
+            System.out.println("No hay tareas registradas en el sistema.");
+        } else {
+            for (Tarea t : tareas) {
+                System.out.println("ID: " + t.getId() +
+                        " | " + String.format("%-25s", t.getTitulo()) +
+                        " | Estado: " + String.format("%-12s", t.getEstado()) +
+                        " | Prioridad: " + String.format("%-10s", t.getPrioridad()) +
+                        " | Proyecto ID: " + t.getProyectoId());
+            }
+        }
+    }
+
+    /**
+     * Lista los usuarios del sistema para facilitar la selección por ID.
+     */
     private void mostrarUsuariosSistema() {
         System.out.println("\n--- EQUIPO DISPONIBLE ---");
         List<Usuario> usuarios = usuarioDAO.listarTodos();
@@ -363,7 +426,6 @@ public class ConsoleUI {
         if (usuarios.isEmpty()) {
             System.out.println("No hay usuarios registrados.");
         } else {
-            // Formateamos la salida para que parezca una tabla
             System.out.printf("%-5s | %-15s | %-20s%n", "ID", "USUARIO", "EMAIL");
             System.out.println("----------------------------------------------");
             for (Usuario u : usuarios) {
