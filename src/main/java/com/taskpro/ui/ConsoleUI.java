@@ -1,16 +1,10 @@
 package com.taskpro.ui;
 
-import com.taskpro.dao.ProyectoDAO;
-import com.taskpro.dao.TareaDAO;
-import com.taskpro.dao.UsuarioDAO;
-import com.taskpro.model.Proyecto;
-import com.taskpro.model.Tarea;
-import com.taskpro.model.Usuario;
-import com.taskpro.model.enums.EstadoProyecto;
-import com.taskpro.model.enums.EstadoTarea;
-import com.taskpro.service.AuthService;
-import com.taskpro.service.ProyectoService;
-import com.taskpro.service.TareaService;
+import com.taskpro.dao.*;
+import com.taskpro.exception.*;
+import com.taskpro.model.*;
+import com.taskpro.model.enums.*;
+import com.taskpro.service.*;
 
 import java.util.List;
 import java.util.Scanner;
@@ -38,7 +32,7 @@ public class ConsoleUI {
     }
 
     /**
-     * Lanza el bucle principal de la aplicación (Menú de Bienvenida).
+     * Lanza el bucle principal de la aplicación.
      */
     public void iniciar() {
         boolean salir = false;
@@ -71,15 +65,15 @@ public class ConsoleUI {
      * Gestiona el flujo de autenticación solicitando credenciales al usuario.
      */
     private void login() {
-        System.out.println("\n--- INICIO DE SESIÓN ---");
-        System.out.print("Introduce tu email: ");
-        String email = scanner.nextLine();
-        System.out.print("Introduce tu contraseña: ");
-        String password = scanner.nextLine();
+        try {
+            System.out.println("\n--- INICIO DE SESIÓN ---");
+            System.out.print("Introduce tu email: ");
+            String email = scanner.nextLine();
+            System.out.print("Introduce tu contraseña: ");
+            String password = scanner.nextLine();
 
-        Usuario usuarioActual = authService.login(email, password);
+            Usuario usuarioActual = authService.login(email, password);
 
-        if (usuarioActual != null) {
             System.out.println("\n¡Bienvenido/a, " + usuarioActual.getUsername() + "!");
 
             if (usuarioActual.esAdmin()) {
@@ -87,8 +81,11 @@ public class ConsoleUI {
             } else {
                 menuUsuarioEstandar(usuarioActual);
             }
-        } else {
-            System.out.println("\nError: Credenciales incorrectas.");
+
+        } catch (AuthenticationException e) {
+            System.out.println("\n[LOGIN FALLIDO]: " + e.getMessage());
+        } catch (DatabaseException e) {
+            System.out.println("\n[ERROR DE SISTEMA]: " + e.getMessage());
         }
     }
 
@@ -152,247 +149,295 @@ public class ConsoleUI {
         }
     }
 
+    /**
+     * Recupera y muestra por consola los proyectos creados por el usuario actual.
+     * Maneja posibles errores técnicos de la base de datos.
+     *
+     * @param usuarioActual El usuario que realiza la consulta.
+     */
     private void mostrarProyectos(Usuario usuarioActual) {
-        System.out.println("\n--- TUS PROYECTOS ---");
-        List<Proyecto> proyectos = proyectoDAO.listarPorUsuario(usuarioActual.getId());
-        if (proyectos.isEmpty()) {
-            System.out.println("Aun no has creado ningún proyecto.");
-        } else {
-            for (Proyecto p : proyectos) {
-                System.out.println("ID: " + p.getId() + " | " + p.getNombre() + " | Estado: " + p.getEstado());
-            }
-        }
-    }
+        try {
+            System.out.println("\n--- TUS PROYECTOS ---");
+            List<Proyecto> proyectos = proyectoDAO.listarPorUsuario(usuarioActual.getId());
 
-    private void mostrarTareas(Usuario usuarioActual) {
-        System.out.println("\n--- TUS TAREAS ---");
-        List<Tarea> tareas = tareaDAO.listarPorUsuario(usuarioActual.getId());
-        if (tareas.isEmpty()) {
-            System.out.println("No tienes ninguna tarea asignada en este momento.");
-        } else {
-            for (Tarea t : tareas) {
-                System.out.println("ID: " + t.getId() + " | " + t.getTitulo() +
-                        " | Prioridad: " + t.getPrioridad() + " | Estado: " + t.getEstado());
+            if (proyectos.isEmpty()) {
+                System.out.println("Aun no has creado ningún proyecto.");
+            } else {
+                for (Proyecto p : proyectos) {
+                    System.out.println("ID: " + p.getId() + " | " + p.getNombre() + " | Estado: " + p.getEstado());
+                }
             }
+        } catch (DatabaseException e) {
+            System.out.println("\n[ERROR DE SISTEMA]: No pudimos cargar tus proyectos. " + e.getMessage());
         }
     }
 
     /**
-     * Formulario interactivo para registrar un nuevo proyecto en el sistema.
+     * Recupera y muestra por consola las tareas asignadas al usuario actual.
+     * Valida la conexión con la persistencia durante el listado.
+     *
+     * @param usuarioActual El usuario que desea ver sus responsabilidades.
+     */
+    private void mostrarTareas(Usuario usuarioActual) {
+        try {
+            System.out.println("\n--- TUS TAREAS ---");
+            List<Tarea> tareas = tareaDAO.listarPorUsuario(usuarioActual.getId());
+
+            if (tareas.isEmpty()) {
+                System.out.println("No tienes ninguna tarea asignada en este momento.");
+            } else {
+                for (Tarea t : tareas) {
+                    System.out.println("ID: " + t.getId() + " | " + t.getTitulo() +
+                            " | Prioridad: " + t.getPrioridad() + " | Estado: " + t.getEstado());
+                }
+            }
+        } catch (DatabaseException e) {
+            System.out.println("\n[ERROR DE SISTEMA]: Error al conectar con la tabla de tareas. " + e.getMessage());
+        }
+    }
+
+    /**
+     * Formulario interactivo para registrar un nuevo proyecto.
+     * Captura excepciones de validación, permisos y base de datos.
+     *
+     * @param usuarioActual Usuario que intenta realizar la operación (debe ser ADMINISTRADOR)
      */
     private void menuCrearProyecto(Usuario usuarioActual) {
-        System.out.println("\n--- CREAR NUEVO PROYECTO ---");
+        try {
+            System.out.println("\n--- CREAR NUEVO PROYECTO ---");
+            System.out.print("Nombre del proyecto: ");
+            String nombre = scanner.nextLine();
+            System.out.print("Descripción: ");
+            String descripcion = scanner.nextLine();
 
-        System.out.print("Introduce el nombre del proyecto: ");
-        String nombre = scanner.nextLine();
+            Proyecto nuevoProyecto = new Proyecto(nombre, descripcion, usuarioActual.getId());
 
-        System.out.print("Introduce una descripción: ");
-        String descripcion = scanner.nextLine();
+            String mensajeExito = proyectoService.crearNuevoProyecto(nuevoProyecto, usuarioActual);
+            System.out.println("\n" + mensajeExito);
 
-        Proyecto nuevoProyecto = new Proyecto(nombre, descripcion, usuarioActual.getId());
-
-        String resultado = proyectoService.crearNuevoProyecto(nuevoProyecto, usuarioActual);
-
-        System.out.println("\n" + resultado);
+        } catch (ValidationException | AccessDeniedException e) {
+            System.out.println("\n[AVISO]: " + e.getMessage());
+        } catch (DatabaseException e) {
+            System.out.println("\n[ERROR CRÍTICO]: " + e.getMessage());
+        }
     }
 
     /**
-     * Formulario para crear tareas vinculándolas a un proyecto existente.
+     * Guía al usuario para crear una tarea vinculada a un proyecto.
+     * Gestiona errores de formato de fecha, IDs no numéricos y reglas de negocio.
+     *
+     * @param usuarioActual Usuario autenticado que solicita la creación de la tarea.
      */
     private void menuCrearTarea(Usuario usuarioActual) {
-        System.out.println("\n--- CREAR NUEVA TAREA ---");
-        System.out.println("Primero, necesitas elegir a que proyecto pertenecerá la tarea.");
-        mostrarProyectos(usuarioActual);
-
-        System.out.print("\n> Introduce el ID del Proyecto: ");
-        long proyectoId;
         try {
-            proyectoId = Long.parseLong(scanner.nextLine());
+            System.out.println("\n--- CREAR NUEVA TAREA ---");
+            mostrarTodosLosProyectos();
+
+            System.out.print("\n> Introduce el ID del Proyecto: ");
+            long proyectoId = Long.parseLong(scanner.nextLine());
+
+            System.out.print("> Título de la tarea: ");
+            String titulo = scanner.nextLine();
+            System.out.print("> Descripción: ");
+            String descripcion = scanner.nextLine();
+
+            System.out.print("> Fecha límite (YYYY-MM-DD): ");
+            java.time.LocalDate fechaLimite = java.time.LocalDate.parse(scanner.nextLine());
+
+            Tarea nuevaTarea = new Tarea(proyectoId, titulo, descripcion, fechaLimite);
+
+            String mensajeExito = tareaService.crearNuevaTarea(nuevaTarea, usuarioActual);
+            System.out.println("\n" + mensajeExito);
+
         } catch (NumberFormatException e) {
-            System.out.println("ERROR: El ID debe ser un numero.");
-            return;
+            System.out.println("\n[ERROR]: El ID del proyecto debe ser un número.");
+        } catch (java.time.format.DateTimeParseException e) {
+            System.out.println("\n[ERROR]: Formato de fecha inválido. Usa AAAA-MM-DD.");
+        } catch (ValidationException | AccessDeniedException e) {
+            System.out.println("\n[AVISO]: " + e.getMessage());
+        } catch (DatabaseException e) {
+            System.out.println("\n[ERROR CRÍTICO]: " + e.getMessage());
         }
-
-        System.out.print("> Introduce el titulo de la tarea: ");
-        String titulo = scanner.nextLine();
-
-        System.out.print("> Introduce una descripción: ");
-        String descripcion = scanner.nextLine();
-
-        System.out.print("> Fecha limite (YYYY-MM-DD): ");
-        String fechaInput = scanner.nextLine();
-        java.time.LocalDate fechaLimite;
-        try {
-            fechaLimite = java.time.LocalDate.parse(fechaInput);
-        } catch (Exception e) {
-            System.out.println("ERROR: Formato de fecha incorrecto. Cancelando creación.");
-            return;
-        }
-
-        Tarea nuevaTarea = new Tarea(proyectoId, titulo, descripcion, fechaLimite);
-
-        String resultado = tareaService.crearNuevaTarea(nuevaTarea, usuarioActual);
-        System.out.println("\n" + resultado);
     }
 
     /**
-     * Permite a un administrador asignar una tarea específica a un usuario del sistema.
+     * Interfaz para vincular una tarea con un usuario responsable.
+     * Valida la existencia de los recursos y los permisos del gestor.
+     *
+     * @param usuarioActual Usuario administrador con permisos para realizar asignaciones.
      */
     private void menuAsignarTarea(Usuario usuarioActual) {
-        System.out.println("\n--- ASIGNAR TAREA A USUARIO ---");
-        mostrarTodosLosProyectos();
-        System.out.print("\n> Introduce el ID del Proyecto: ");
-        long proyectoId = Long.parseLong(scanner.nextLine());
+        try {
+            System.out.println("\n--- ASIGNAR TAREA A USUARIO ---");
+            mostrarTodosLosProyectos();
 
-        List<Tarea> tareas = tareaDAO.listarPorProyecto(proyectoId);
-        if (tareas.isEmpty()) {
-            System.out.println("No hay tareas en este proyecto.");
-            return;
+            System.out.print("\n> ID del Proyecto: ");
+            long proyectoId = Long.parseLong(scanner.nextLine());
+
+            List<Tarea> tareas = tareaDAO.listarPorProyecto(proyectoId);
+            if (tareas.isEmpty()) {
+                System.out.println("No hay tareas en este proyecto.");
+                return;
+            }
+
+            tareas.forEach(t -> System.out.println("ID: " + t.getId() + " | " + t.getTitulo()));
+
+            System.out.print("\n> ID de la TAREA a asignar: ");
+            long tareaId = Long.parseLong(scanner.nextLine());
+
+            mostrarUsuariosSistema();
+
+            System.out.print("\n> ID del USUARIO encargado: ");
+            long userAsignadoId = Long.parseLong(scanner.nextLine());
+
+            String mensajeExito = tareaService.asignarUsuarioATarea(tareaId, userAsignadoId, usuarioActual);
+            System.out.println("\n" + mensajeExito);
+
+        } catch (NumberFormatException e) {
+            System.out.println("\n[ERROR]: Los IDs deben ser valores numéricos.");
+        } catch (AccessDeniedException e) {
+            System.out.println("\n[SEGURIDAD]: " + e.getMessage());
+        } catch (DatabaseException e) {
+            System.out.println("\n[SISTEMA]: " + e.getMessage());
         }
-        for (Tarea t : tareas) {
-            System.out.println("ID: " + t.getId() + " | " + t.getTitulo());
-        }
-
-        System.out.print("\n> ID de la TAREA a asignar: ");
-        long tareaId = Long.parseLong(scanner.nextLine());
-
-        mostrarUsuariosSistema();
-
-        System.out.print("\n> ID del USUARIO encargado: ");
-        long userAsignadoId = Long.parseLong(scanner.nextLine());
-
-        String resultado = tareaService.asignarUsuarioATarea(tareaId, userAsignadoId, usuarioActual);
-        System.out.println("\n" + resultado);
     }
 
     /**
-     * Gestión de cambio de estado de tareas con validación de asignación.
+     * Interfaz de consola para que un usuario actualice el progreso de sus tareas.
+     * Lista las tareas del usuario y permite cambiar su estado.
+     *
+     * @param usuarioActual Usuario que intenta realizar la modificación.
      */
     private void menuCambiarEstadoTarea(Usuario usuarioActual) {
-        System.out.println("\n--- CAMBIAR ESTADO DE TAREA ---");
-        mostrarTareas(usuarioActual);
-
-        System.out.print("\n> Introduce el ID de la tarea a actualizar: ");
-        long tareaId;
         try {
-            tareaId = Long.parseLong(scanner.nextLine());
+            System.out.println("\n--- CAMBIAR ESTADO DE TAREA ---");
+            mostrarTareas(usuarioActual);
+
+            System.out.print("\n> Introduce el ID de la tarea a actualizar: ");
+            long tareaId = Long.parseLong(scanner.nextLine());
+
+            System.out.println("Estados disponibles: " + java.util.Arrays.toString(EstadoTarea.values()));
+            System.out.print("> Escribe el nuevo estado exacto: ");
+            String estadoInput = scanner.nextLine().toUpperCase().trim();
+
+            EstadoTarea nuevoEstado = EstadoTarea.valueOf(estadoInput);
+
+            String resultado = tareaService.cambiarEstadoTarea(tareaId, nuevoEstado, usuarioActual);
+            System.out.println("\n" + resultado);
+
         } catch (NumberFormatException e) {
-            System.out.println("ERROR: El ID debe ser un formato numérico valido.");
-            return;
-        }
-
-        System.out.println("Estados disponibles: " + java.util.Arrays.toString(EstadoTarea.values()));
-        System.out.print("> Escribe el nuevo estado exacto: ");
-        String estadoInput = scanner.nextLine().toUpperCase().trim();
-
-        EstadoTarea nuevoEstado;
-        try {
-            nuevoEstado = EstadoTarea.valueOf(estadoInput);
+            System.out.println("\n[ERROR]: El ID de la tarea debe ser un número.");
         } catch (IllegalArgumentException e) {
-            System.out.println("ERROR: El estado '" + estadoInput + "' no es valido. Operación abortada.");
-            return;
+            System.out.println("\n[ERROR]: El estado introducido no es válido.");
+        } catch (ResourceNotFoundException | AccessDeniedException e) {
+            System.out.println("\n[AVISO]: " + e.getMessage());
+        } catch (DatabaseException e) {
+            System.out.println("\n[SISTEMA]: " + e.getMessage());
         }
-
-        String resultado = tareaService.cambiarEstadoTarea(tareaId, nuevoEstado, usuarioActual);
-        System.out.println("\n" + resultado);
-    }
-
-    private void menuCambiarEstadoProyecto(Usuario usuarioActual) {
-        System.out.println("\n--- CAMBIAR ESTADO DE PROYECTO ---");
-        mostrarTodosLosProyectos();
-
-        System.out.print("\n> Introduce el ID del proyecto a actualizar: ");
-        long proyectoId;
-        try {
-            proyectoId = Long.parseLong(scanner.nextLine());
-        } catch (NumberFormatException e) {
-            System.out.println("ERROR: El ID debe ser un formato numérico válido.");
-            return;
-        }
-
-        System.out.println("Estados disponibles: " + java.util.Arrays.toString(EstadoProyecto.values()));
-        System.out.print("> Escribe el nuevo estado exacto: ");
-        String estadoInput = scanner.nextLine().toUpperCase().trim();
-
-        EstadoProyecto nuevoEstado;
-        try {
-            nuevoEstado = EstadoProyecto.valueOf(estadoInput);
-        } catch (IllegalArgumentException e) {
-            System.out.println("ERROR: El estado '" + estadoInput + "' no es válido. Operación abortada.");
-            return;
-        }
-
-        String resultado = proyectoService.cambiarEstadoProyecto(proyectoId, nuevoEstado, usuarioActual);
-        System.out.println("\n" + resultado);
     }
 
     /**
-     * Módulo de auditoría para visualizar el histórico de cambios de una tarea.
+     * Formulario para que un administrador modifique el estado global de un proyecto.
+     * Permite seleccionar un proyecto del listado general y asignarle un nuevo estado.
+     *
+     * @param usuarioActual Usuario (Administrador) que solicita el cambio.
+     */
+    private void menuCambiarEstadoProyecto(Usuario usuarioActual) {
+        try {
+            System.out.println("\n--- CAMBIAR ESTADO DE PROYECTO ---");
+            mostrarTodosLosProyectos();
+
+            System.out.print("\n> Introduce el ID del proyecto a actualizar: ");
+            long proyectoId = Long.parseLong(scanner.nextLine());
+
+            System.out.println("Estados disponibles: " + java.util.Arrays.toString(EstadoProyecto.values()));
+            System.out.print("> Escribe el nuevo estado exacto: ");
+            String estadoInput = scanner.nextLine().toUpperCase().trim();
+
+            EstadoProyecto nuevoEstado = EstadoProyecto.valueOf(estadoInput);
+
+            String resultado = proyectoService.cambiarEstadoProyecto(proyectoId, nuevoEstado, usuarioActual);
+            System.out.println("\n" + resultado);
+
+        } catch (NumberFormatException e) {
+            System.out.println("\n[ERROR]: El ID del proyecto debe ser numérico.");
+        } catch (IllegalArgumentException e) {
+            System.out.println("\n[ERROR]: Ese estado de proyecto no existe.");
+        } catch (ResourceNotFoundException | AccessDeniedException e) {
+            System.out.println("\n[AVISO]: " + e.getMessage());
+        } catch (DatabaseException e) {
+            System.out.println("\n[SISTEMA]: Error técnico: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Módulo de auditoría que permite visualizar el rastro de cambios de una tarea.
+     *
+     * @param usuarioActual Usuario que consulta el historial (requiere permisos de gestor).
      */
     private void menuVerHistorial(Usuario usuarioActual) {
-        System.out.println("\n--- MÓDULO DE AUDITORÍA ---");
-        mostrarTodosLosProyectos();
-        System.out.print("\n> Introduce el ID del Proyecto para ver sus tareas: ");
-        long proyectoId;
         try {
-            proyectoId = Long.parseLong(scanner.nextLine());
-        } catch (NumberFormatException e) {
-            System.out.println("ERROR: ID no válido.");
-            return;
-        }
+            System.out.println("\n--- MÓDULO DE AUDITORÍA ---");
+            mostrarTodosLosProyectos();
 
-        System.out.println("\n--- TAREAS DEL PROYECTO " + proyectoId + " ---");
-        List<Tarea> tareas = tareaDAO.listarPorProyecto(proyectoId);
+            System.out.print("\n> Introduce el ID del Proyecto para ver sus tareas: ");
+            long proyectoId = Long.parseLong(scanner.nextLine());
 
-        if (tareas.isEmpty()) {
-            System.out.println("Este proyecto no tiene tareas registradas.");
-            return;
-        }
+            System.out.println("\n--- TAREAS DEL PROYECTO " + proyectoId + " ---");
+            List<Tarea> tareas = tareaDAO.listarPorProyecto(proyectoId);
 
-        for (Tarea t : tareas) {
-            System.out.println("ID: " + t.getId() + " | Título: " + t.getTitulo() + " | Estado: " + t.getEstado());
-        }
-
-        System.out.print("\n> Introduce el ID de la Tarea para ver su historial: ");
-        long tareaId;
-        try {
-            tareaId = Long.parseLong(scanner.nextLine());
-        } catch (NumberFormatException e) {
-            System.out.println("ERROR: ID no válido.");
-            return;
-        }
-
-        List<String> logs = tareaService.consultarHistorialTarea(tareaId, usuarioActual);
-
-        if (logs == null) {
-            System.out.println("ACCESO DENEGADO: No tienes permisos de auditor.");
-        } else if (logs.isEmpty()) {
-            System.out.println("No hay registros de cambios para la tarea #" + tareaId);
-        } else {
-            System.out.println("\n=== REGISTROS DE ACTIVIDAD (Tarea #" + tareaId + ") ===");
-            for (String log : logs) {
-                System.out.println(log);
+            if (tareas.isEmpty()) {
+                System.out.println("Este proyecto no tiene tareas registradas.");
+                return;
             }
-            System.out.println("====================================================");
+
+            for (Tarea t : tareas) {
+                System.out.println("ID: " + t.getId() + " | Título: " + t.getTitulo() + " | " +
+                        "Estado: " + t.getEstado());
+            }
+
+            System.out.print("\n> Introduce el ID de la Tarea para ver su historial: ");
+            long tareaId = Long.parseLong(scanner.nextLine());
+
+            List<String> logs = tareaService.consultarHistorialTarea(tareaId, usuarioActual);
+
+            if (logs.isEmpty()) {
+                System.out.println("No hay registros de cambios para la tarea #" + tareaId);
+            } else {
+                System.out.println("\n=== REGISTROS DE ACTIVIDAD (Tarea #" + tareaId + ") ===");
+                logs.forEach(System.out::println);
+                System.out.println("====================================================");
+            }
+
+        } catch (NumberFormatException e) {
+            System.out.println("\n[ERROR]: Debes introducir un ID numérico válido.");
+        } catch (AccessDeniedException e) {
+            System.out.println("\n[SEGURIDAD]: " + e.getMessage());
+        } catch (DatabaseException e) {
+            System.out.println("\n[SISTEMA]: No se pudo cargar el historial: " + e.getMessage());
         }
     }
 
     /**
-     * Imprime en consola todos los proyectos registrados.
+     * Recupera y presenta una visión global de todos los proyectos en el sistema.
      */
     private void mostrarTodosLosProyectos() {
-        System.out.println("\n--- VISIÓN GLOBAL DE PROYECTOS ---");
-        List<Proyecto> proyectos = proyectoDAO.listarTodos();
+        try {
+            System.out.println("\n--- VISIÓN GLOBAL DE PROYECTOS ---");
+            List<Proyecto> proyectos = proyectoDAO.listarTodos();
 
-        if (proyectos.isEmpty()) {
-            System.out.println("No hay proyectos registrados en el sistema.");
-        } else {
-            for (Proyecto p : proyectos) {
-                System.out.println("ID: " + p.getId() +
-                        " | " + String.format("%-20s", p.getNombre()) +
-                        " | Estado: " + p.getEstado() +
-                        " | Creador ID: " + p.getCreadorId());
+            if (proyectos.isEmpty()) {
+                System.out.println("No hay proyectos registrados en el sistema.");
+            } else {
+                for (Proyecto p : proyectos) {
+                    System.out.println("ID: " + p.getId() +
+                            " | " + String.format("%-20s", p.getNombre()) +
+                            " | Estado: " + p.getEstado() +
+                            " | Creador ID: " + p.getCreadorId());
+                }
             }
+        } catch (DatabaseException e) {
+            System.out.println("\n[ERROR DE SISTEMA]: No se pueden listar los proyectos: " + e.getMessage());
         }
     }
 

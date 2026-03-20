@@ -1,5 +1,7 @@
 package com.taskpro.config;
 
+import com.taskpro.exception.DatabaseException;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -13,14 +15,14 @@ public class DatabaseConnection {
      * Abre y devuelve una conexión activa a la base de datos.
      *
      * @return Connection objeto de conexión.
-     * @throws SQLException sí hay un error de red o credenciales.
+     * @throws DatabaseException sí hay un error de red o credenciales.
      */
-    public static Connection getConnection() throws SQLException {
+    public static Connection getConnection(){
         try {
             return DriverManager.getConnection(URL, USER, PASSWORD);
         } catch (SQLException e) {
-            System.err.println("¡Error! Asegúrate de que MySQL esté encendido y la contraseña sea correcta.");
-            throw e;
+            throw new DatabaseException("No se pudo establecer la conexión con MySQL. " +
+                    "Verifica que el servicio esté activo y las credenciales sean correctas.", e);
         }
     }
 }

@@ -1,8 +1,8 @@
 package com.taskpro.service;
 
 import com.taskpro.dao.TareaDAO;
-import com.taskpro.model.Tarea;
-import com.taskpro.model.Usuario;
+import com.taskpro.exception.*;
+import com.taskpro.model.*;
 import com.taskpro.model.enums.EstadoTarea;
 
 import java.util.List;
@@ -26,24 +26,24 @@ public class TareaService {
      */
     public String crearNuevaTarea(Tarea nuevaTarea, Usuario usuarioActual) {
         if (!usuarioActual.esAdmin()) {
-            return "ERROR: No tienes permisos para crear tareas.";
+            throw new AccessDeniedException("No tienes permisos para crear tareas.");
         }
 
         if (nuevaTarea.getTitulo() == null || nuevaTarea.getTitulo().trim().isEmpty()) {
-            return "ERROR: El titulo de la tarea no puede estar vacío.";
+            throw new ValidationException("El título de la tarea no puede estar vacío.");
         }
 
         if (nuevaTarea.getFechaLimite() == null) {
-            return "ERROR: La fecha limite es obligatoria.";
+            throw new ValidationException("La fecha límite es obligatoria.");
         }
 
         boolean exito = tareaDAO.guardar(nuevaTarea);
 
-        if (exito) {
-            return "EXITO: La tarea '" + nuevaTarea.getTitulo() + "' ha sido creada correctamente.";
-        } else {
-            return "ERROR INTERNO: No se pudo guardar la tarea en la base de datos.";
+        if (!exito) {
+            throw new DatabaseException("No se pudo guardar la tarea en la base de datos.");
         }
+
+        return "EXITO: La tarea '" + nuevaTarea.getTitulo() + "' ha sido creada correctamente.";
     }
 
     /**
@@ -56,16 +56,16 @@ public class TareaService {
      */
     public String asignarUsuarioATarea(long tareaId, long usuarioAsignadoId, Usuario usuarioActual) {
         if (!usuarioActual.esAdmin()) {
-            return "ERROR: No tienes permisos para crear tareas.";
+            throw new AccessDeniedException("Solo los administradores pueden asignar tareas.");
         }
 
         boolean exito = tareaDAO.asignarUsuario(tareaId, usuarioAsignadoId);
 
-        if (exito) {
-            return "EXITO: Tarea " + tareaId + " asignada correctamente al usuario " + usuarioAsignadoId + ".";
-        } else {
-            return "ERROR: No se pudo asignar la tarea. Comprueba que los IDs existan.";
+        if (!exito) {
+            throw new DatabaseException("No se pudo asignar la tarea. Verifica que los IDs sean correctos.");
         }
+
+        return "EXITO: Tarea " + tareaId + " asignada correctamente al usuario " + usuarioAsignadoId + ".";
     }
 
     /**
@@ -79,14 +79,13 @@ public class TareaService {
     public String cambiarEstadoTarea(long tareaId, EstadoTarea nuevoEstado, Usuario usuarioActual) {
         Tarea tareaExistente = tareaDAO.buscarPorId(tareaId);
         if (tareaExistente == null) {
-            return "ERROR: No se encontró la tarea con ID " + tareaId + ".";
+            throw new ResourceNotFoundException("No se encontró la tarea con ID " + tareaId);
         }
 
         if (usuarioActual.esUsuarioEstandar()) {
             boolean estaAsignado = tareaDAO.esUsuarioAsignado(tareaId, usuarioActual.getId());
-
             if (!estaAsignado) {
-                return "ACCESO DENEGADO: Solo los usuarios asignados pueden modificar esta tarea.";
+                throw new AccessDeniedException("Acceso denegado: No estás asignado a esta tarea.");
             }
         }
 
@@ -94,16 +93,15 @@ public class TareaService {
 
         boolean exito = tareaDAO.actualizarEstado(tareaId, nuevoEstado);
 
-        if (exito) {
-            String descripcionCambio = "El usuario " + usuarioActual.getUsername() +
-                    " cambió el estado: " + estadoAnterior + " -> " + nuevoEstado.name();
-
-            tareaDAO.registrarHistorial(tareaId, descripcionCambio);
-
-            return "EXITO: El estado de la tarea '" + tareaExistente.getTitulo() + "' ahora es " + nuevoEstado.name() + ".";
-        } else {
-            return "ERROR: Fallo técnico al actualizar el estado en la base de datos.";
+        if (!exito) {
+            throw new DatabaseException("Error técnico al actualizar el estado de la tarea.");
         }
+
+        String descripcionCambio = "El usuario " + usuarioActual.getUsername() +
+                " cambió el estado: " + estadoAnterior + " -> " + nuevoEstado.name();
+        tareaDAO.registrarHistorial(tareaId, descripcionCambio);
+
+        return "EXITO: El estado de la tarea '" + tareaExistente.getTitulo() + "' ahora es " + nuevoEstado.name() + ".";
     }
 
     /**

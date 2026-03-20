@@ -1,8 +1,8 @@
 package com.taskpro.service;
 
 import com.taskpro.dao.ProyectoDAO;
-import com.taskpro.model.Proyecto;
-import com.taskpro.model.Usuario;
+import com.taskpro.exception.*;
+import com.taskpro.model.*;
 import com.taskpro.model.enums.EstadoProyecto;
 
 public class ProyectoService {
@@ -24,20 +24,20 @@ public class ProyectoService {
      */
     public String crearNuevoProyecto(Proyecto nuevoProyecto, Usuario usuarioActual) {
         if (!usuarioActual.esAdmin()) {
-            return "ACCESO DENEGADO: Tu rol no tiene permisos para crear proyectos.";
+            throw new AccessDeniedException("Tu rol no tiene permisos para crear proyectos.");
         }
 
         if (nuevoProyecto.getNombre() == null || nuevoProyecto.getNombre().trim().isEmpty()) {
-            return "ERROR: El nombre del proyecto no puede estar vacío.";
+            throw new ValidationException("El nombre del proyecto no puede estar vacío.");
         }
 
         boolean exito = proyectoDAO.guardar(nuevoProyecto);
 
-        if (exito) {
-            return "¡ÉXITO! El proyecto '" + nuevoProyecto.getNombre() + "' ha sido creado correctamente.";
-        } else {
-            return "ERROR INTERNO: No se pudo guardar el proyecto en la base de datos.";
+        if (!exito) {
+            throw new DatabaseException("Error técnico: No se pudo guardar el proyecto.");
         }
+
+        return "¡ÉXITO! El proyecto '" + nuevoProyecto.getNombre() + "' ha sido creado.";
     }
 
     /**
@@ -52,19 +52,19 @@ public class ProyectoService {
                                         Usuario usuarioActual) {
         Proyecto proyectoExistente = proyectoDAO.buscarPorId(proyectoId);
         if (proyectoExistente == null) {
-            return "ERROR: No se encontró el proyecto con ID " + proyectoId + ".";
+            throw new ResourceNotFoundException("No se encontró el proyecto con ID " + proyectoId);
         }
 
         if (usuarioActual.esUsuarioEstandar()) {
-            return "ACCESO DENEGADO: Solo los administradores pueden cambiar el estado de un proyecto.";
+            throw new AccessDeniedException("Solo los administradores pueden cambiar el estado de un proyecto.");
         }
 
         boolean exito = proyectoDAO.actualizarEstado(proyectoId, nuevoEstado);
 
-        if (exito) {
-            return "EXITO: El proyecto '" + proyectoExistente.getNombre() + "' ahora está " + nuevoEstado.name() + ".";
-        } else {
-            return "ERROR: Fallo técnico al actualizar el proyecto en la base de datos.";
+        if (!exito) {
+            throw new DatabaseException("Error técnico al actualizar el proyecto.");
         }
+
+        return "EXITO: El proyecto '" + proyectoExistente.getNombre() + "' ahora está " + nuevoEstado.name() + ".";
     }
 }

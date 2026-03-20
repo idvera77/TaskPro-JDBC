@@ -1,7 +1,6 @@
 package com.taskpro.model;
 
-import com.taskpro.model.enums.EstadoTarea;
-import com.taskpro.model.enums.Prioridad;
+import com.taskpro.model.enums.*;
 
 import java.time.LocalDate;
 

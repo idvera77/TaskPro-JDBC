@@ -1,15 +1,11 @@
 package com.taskpro.dao;
 
 import com.taskpro.config.DatabaseConnection;
+import com.taskpro.exception.DatabaseException;
 import com.taskpro.model.Tarea;
-import com.taskpro.model.enums.EstadoTarea;
-import com.taskpro.model.enums.Prioridad;
+import com.taskpro.model.enums.*;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.time.LocalDate;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,11 +15,11 @@ public class TareaDAO {
      * Inserta una nueva tarea en la base de datos.
      *
      * @param tarea Objeto Tarea con la información a registrar.
-     * @return true si la tarea se guardó correctamente, false en caso contrario.
+     * @return true si la fila fue insertada con éxito.
+     * @throws DatabaseException Si ocurre un error técnico en la inserción o conexión.
      */
     public boolean guardar(Tarea tarea) {
-        String sql = "INSERT INTO tareas (proyecto_id, titulo, descripcion, fecha_limite) VALUES " +
-                "(?, ?, ?, ?)";
+        String sql = "INSERT INTO tareas (proyecto_id, titulo, descripcion, fecha_limite) VALUES (?, ?, ?, ?)";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -31,22 +27,21 @@ public class TareaDAO {
             stmt.setLong(1, tarea.getProyectoId());
             stmt.setString(2, tarea.getTitulo());
             stmt.setString(3, tarea.getDescripcion());
-            stmt.setDate(4, java.sql.Date.valueOf(tarea.getFechaLimite()));
+            stmt.setDate(4, Date.valueOf(tarea.getFechaLimite()));
 
-            int filasAfectadas = stmt.executeUpdate();
-            return filasAfectadas > 0;
+            return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Error al intentar guardar la tarea: " + e.getMessage());
-            return false;
+            throw new DatabaseException("Error al intentar guardar la tarea: " + tarea.getTitulo(), e);
         }
     }
 
     /**
-     * Crea un registro en la tabla intermedia para asignar una tarea a un usuario.
+     * Registra una asignación entre una tarea y un usuario en la tabla intermedia.
      *
-     * @param tareaId ID de la tarea a asignar.
-     * @param usuarioId ID del usuario que recibirá la asignación.
-     * @return true si la asignación fue exitosa, false si hubo un error.
+     * @param tareaId Identificador de la tarea.
+     * @param usuarioId Identificador del usuario.
+     * @return true si la asignación se realizó correctamente.
+     * @throws DatabaseException Si falla la restricción de claves foráneas o la comunicación con la DB.
      */
     public boolean asignarUsuario(long tareaId, long usuarioId) {
         String sql = "INSERT INTO tarea_asignaciones (tarea_id, usuario_id) VALUES (?, ?)";
@@ -57,20 +52,19 @@ public class TareaDAO {
             stmt.setLong(1, tareaId);
             stmt.setLong(2, usuarioId);
 
-            int filasAfectadas = stmt.executeUpdate();
-            return filasAfectadas > 0;
+            return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Error al asignar usuario a la tarea: " + e.getMessage());
-            return false;
+            throw new DatabaseException("Error al asignar usuario " + usuarioId + " a la tarea " + tareaId, e);
         }
     }
 
     /**
-     * Verifica si existe una relación de asignación entre una tarea y un usuario.
+     * Comprueba en la base de datos si existe un registro de asignación específico.
      *
-     * @param tareaId ID de la tarea a comprobar.
-     * @param usuarioId ID del usuario a comprobar.
-     * @return true si el usuario está asignado a la tarea, false de lo contrario.
+     * @param tareaId ID de la tarea a verificar.
+     * @param usuarioId ID del usuario a verificar.
+     * @return true si existe la relación, false en caso contrario.
+     * @throws DatabaseException Si ocurre un error al ejecutar la consulta de conteo.
      */
     public boolean esUsuarioAsignado(long tareaId, long usuarioId) {
         String sql = "SELECT COUNT(*) FROM tarea_asignaciones WHERE tarea_id = ? AND usuario_id = ?";
@@ -87,15 +81,16 @@ public class TareaDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Error al verificar asignación: " + e.getMessage());
+            throw new DatabaseException("Error al verificar asignación de la tarea " + tareaId, e);
         }
         return false;
     }
 
     /**
-     * Obtiene la lista completa de todas las tareas del sistema.
+     * Recupera el listado global de todas las tareas, ordenadas por ID.
      *
-     * @return List con todos los objetos Tarea encontrados.
+     * @return List con todos los objetos Tarea del sistema.
+     * @throws DatabaseException Si falla la lectura o el mapeo de los datos.
      */
     public List<Tarea> listarTodas() {
         List<Tarea> listaDeTareas = new ArrayList<>();
@@ -106,29 +101,20 @@ public class TareaDAO {
              ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
-                long id = rs.getLong("id");
-                long proyectoId = rs.getLong("proyecto_id");
-                String titulo = rs.getString("titulo");
-                String descripcion = rs.getString("descripcion");
-                Prioridad prioridad = Prioridad.valueOf(rs.getString("prioridad"));
-                EstadoTarea estado = EstadoTarea.valueOf(rs.getString("estado"));
-                LocalDate fechaLimite = rs.getDate("fecha_limite").toLocalDate();
-
-                Tarea tareaLeida = new Tarea(id, proyectoId, titulo, descripcion, prioridad,
-                        estado, fechaLimite);
-                listaDeTareas.add(tareaLeida);
+                listaDeTareas.add(mapearTarea(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Error al intentar leer las tareas: " + e.getMessage());
+            throw new DatabaseException("Error al intentar leer todas las tareas", e);
         }
         return listaDeTareas;
     }
 
     /**
-     * Filtra y devuelve las tareas que pertenecen a un proyecto específico.
+     * Obtiene todas las tareas vinculadas a un proyecto concreto.
      *
-     * @param idBusqueda ID del proyecto cuyas tareas se desean listar.
-     * @return List de tareas asociadas al proyecto indicado.
+     * @param idBusqueda ID del proyecto para filtrar.
+     * @return List de tareas que pertenecen al proyecto indicado.
+     * @throws DatabaseException Si hay un error en la consulta filtrada.
      */
     public List<Tarea> listarPorProyecto(long idBusqueda) {
         List<Tarea> listaDeTareas = new ArrayList<>();
@@ -138,68 +124,48 @@ public class TareaDAO {
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setLong(1, idBusqueda);
-
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    long id = rs.getLong("id");
-                    long proyectoId = rs.getLong("proyecto_id");
-                    String titulo = rs.getString("titulo");
-                    String descripcion = rs.getString("descripcion");
-                    Prioridad prioridad = Prioridad.valueOf(rs.getString("prioridad"));
-                    EstadoTarea estado = EstadoTarea.valueOf(rs.getString("estado"));
-                    LocalDate fechaLimite = rs.getDate("fecha_limite").toLocalDate();
-
-                    Tarea tareaLeida = new Tarea(id, proyectoId, titulo, descripcion, prioridad,
-                            estado, fechaLimite);
-                    listaDeTareas.add(tareaLeida);
+                    listaDeTareas.add(mapearTarea(rs));
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Error al intentar leer las tareas del proyecto: " + e.getMessage());
+            throw new DatabaseException("Error al leer tareas del proyecto: " + idBusqueda, e);
         }
         return listaDeTareas;
     }
 
     /**
-     * Localiza una tarea única en la base de datos mediante su identificador.
+     * Busca una tarea específica por su identificador único.
      *
-     * @param idBusqueda ID de la tarea a buscar.
-     * @return El objeto Tarea si existe, o null si no se encuentra.
+     * @param idBusqueda ID de la tarea a localizar.
+     * @return Objeto Tarea encontrado o null si no existe el registro.
+     * @throws DatabaseException Si ocurre un error imprevisto en la búsqueda.
      */
     public Tarea buscarPorId(long idBusqueda) {
-        Tarea tareaEncontrada = null;
         String sql = "SELECT * FROM tareas WHERE id = ?";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setLong(1, idBusqueda);
-
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    long id = rs.getLong("id");
-                    long proyectoId = rs.getLong("proyecto_id");
-                    String titulo = rs.getString("titulo");
-                    String descripcion = rs.getString("descripcion");
-                    Prioridad prioridad = Prioridad.valueOf(rs.getString("prioridad"));
-                    EstadoTarea estado = EstadoTarea.valueOf(rs.getString("estado"));
-                    LocalDate fechaLimite = rs.getDate("fecha_limite").toLocalDate();
-
-                    tareaEncontrada = new Tarea(id, proyectoId, titulo, descripcion, prioridad,
-                            estado, fechaLimite);
+                    return mapearTarea(rs);
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Error al buscar la tarea por ID: " + e.getMessage());
+            throw new DatabaseException("Error al buscar tarea por ID: " + idBusqueda, e);
         }
-        return tareaEncontrada;
+        return null;
     }
 
     /**
-     * Recupera las tareas asignadas a un usuario a través de la tabla intermedia.
+     * Recupera las tareas donde un usuario específico figura como asignado.
      *
-     * @param usuarioId ID del usuario para filtrar sus tareas asignadas.
-     * @return List de tareas donde el usuario figura como asignado.
+     * @param usuarioId ID del usuario para filtrar asignaciones.
+     * @return List de tareas asignadas al usuario.
+     * @throws DatabaseException Si falla el JOIN o la consulta de asignaciones.
      */
     public List<Tarea> listarPorUsuario(long usuarioId) {
         List<Tarea> listaDeTareas = new ArrayList<>();
@@ -211,36 +177,24 @@ public class TareaDAO {
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setLong(1, usuarioId);
-
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    long id = rs.getLong("id");
-                    long proyectoId = rs.getLong("proyecto_id");
-                    String titulo = rs.getString("titulo");
-                    String descripcion = rs.getString("descripcion");
-                    Prioridad prioridad =
-                            Prioridad.valueOf(rs.getString("prioridad").toUpperCase().trim());
-                    EstadoTarea estado =
-                            EstadoTarea.valueOf(rs.getString("estado").toUpperCase().trim());
-                    LocalDate fechaLimite = rs.getDate("fecha_limite").toLocalDate();
-
-                    Tarea tareaLeida = new Tarea(id, proyectoId, titulo, descripcion,
-                            prioridad, estado, fechaLimite);
-                    listaDeTareas.add(tareaLeida);
+                    listaDeTareas.add(mapearTarea(rs));
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Error al leer las tareas del usuario: " + e.getMessage());
+            throw new DatabaseException("Error al leer tareas asignadas al usuario: " + usuarioId, e);
         }
         return listaDeTareas;
     }
 
     /**
-     * Actualiza el estado actual de una tarea en la base de datos.
+     * Modifica el estado de progreso de una tarea existente.
      *
-     * @param tareaId ID de la tarea a modificar.
-     * @param nuevoEstado El valor del Enum EstadoTarea que se desea aplicar.
-     * @return true si la actualización fue exitosa, false en caso de error.
+     * @param tareaId ID de la tarea a actualizar.
+     * @param nuevoEstado El valor de Enum EstadoTarea que se desea aplicar.
+     * @return true si se actualizó al menos una fila en la base de datos.
+     * @throws DatabaseException Si falla la sentencia UPDATE.
      */
     public boolean actualizarEstado(long tareaId, EstadoTarea nuevoEstado) {
         String sql = "UPDATE tareas SET estado = ? WHERE id = ?";
@@ -251,47 +205,45 @@ public class TareaDAO {
             stmt.setString(1, nuevoEstado.name());
             stmt.setLong(2, tareaId);
 
-            int filasAfectadas = stmt.executeUpdate();
-            return filasAfectadas > 0;
-        } catch (java.sql.SQLException e) {
-            System.err.println("Error al actualizar el estado: " + e.getMessage());
-            return false;
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            throw new DatabaseException("Error al actualizar estado de la tarea " + tareaId, e);
         }
     }
 
     /**
-     * Recupera el registro histórico de cambios de una tarea específica.
+     * Consulta las entradas de historial registradas para una tarea.
      *
-     * @param tareaId ID de la tarea de la cual se desea obtener el historial.
-     * @return List de cadenas de texto con la fecha y descripción de cada cambio.
+     * @param tareaId ID de la tarea.
+     * @return List de String formateados con fecha y mensaje de cambio.
+     * @throws DatabaseException Si ocurre un error al leer la tabla de historial.
      */
     public List<String> obtenerHistorial(long tareaId) {
         List<String> historial = new ArrayList<>();
-        String sql = "SELECT mensaje, fecha FROM historial_tareas WHERE tarea_id = ? " +
-                "ORDER BY fecha DESC";
+        String sql = "SELECT mensaje, fecha FROM historial_tareas WHERE tarea_id = ? ORDER BY fecha DESC";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setLong(1, tareaId);
-            ResultSet rs = stmt.executeQuery();
-
-            while (rs.next()) {
-                String entrada = "[" + rs.getTimestamp("fecha") + "] " + rs.getString(
-                        "mensaje");
-                historial.add(entrada);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    String entrada = "[" + rs.getTimestamp("fecha") + "] " + rs.getString("mensaje");
+                    historial.add(entrada);
+                }
             }
         } catch (SQLException e) {
-            System.err.println("Error al obtener el historial: " + e.getMessage());
+            throw new DatabaseException("Error al obtener historial de la tarea " + tareaId, e);
         }
         return historial;
     }
 
     /**
-     * Registra una entrada en el historial de auditoría de una tarea.
+     * Crea un nuevo registro de auditoría en el historial de una tarea.
      *
-     * @param tareaId ID de la tarea asociada al cambio.
-     * @param mensaje Descripción detallada del evento o cambio realizado.
+     * @param tareaId ID de la tarea asociada.
+     * @param mensaje Descripción del cambio o evento realizado.
+     * @throws DatabaseException Si falla la inserción del log de auditoría.
      */
     public void registrarHistorial(long tareaId, String mensaje) {
         String sql = "INSERT INTO historial_tareas (tarea_id, mensaje) VALUES (?, ?)";
@@ -301,10 +253,29 @@ public class TareaDAO {
 
             stmt.setLong(1, tareaId);
             stmt.setString(2, mensaje);
-
             stmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Error al registrar el historial: " + e.getMessage());
+            throw new DatabaseException("Error al registrar auditoría para la tarea " + tareaId, e);
         }
     }
+
+    /**
+     * Transforma la fila actual de un ResultSet en un objeto de tipo Tarea.
+     *
+     * @param rs El ResultSet posicionado en la fila a leer.
+     * @return Un objeto Tarea con los datos de la fila.
+     * @throws SQLException Si ocurre un error al acceder a los nombres de columna o tipos de datos.
+     */
+    private Tarea mapearTarea(ResultSet rs) throws SQLException {
+        return new Tarea(
+                rs.getLong("id"),
+                rs.getLong("proyecto_id"),
+                rs.getString("titulo"),
+                rs.getString("descripcion"),
+                Prioridad.valueOf(rs.getString("prioridad").toUpperCase().trim()),
+                EstadoTarea.valueOf(rs.getString("estado").toUpperCase().trim()),
+                rs.getDate("fecha_limite").toLocalDate()
+        );
+    }
 }
+

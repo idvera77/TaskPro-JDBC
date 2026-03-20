@@ -78,10 +78,10 @@ VALUES (1, 'admin_jefe', 'admin@taskpro.com', 'hash_secreto_123', 1),
 
 -- 3. PROYECTOS (Necesitan que los usuarios creadores ya existan)
 INSERT IGNORE INTO proyectos (id, nombre, descripcion, estado, creador_id)
-VALUES (1, 'Rediseño Web', 'Renovar la landing page corporativa', 'ACTIVO', 3),
+VALUES (1, 'Rediseño Web', 'Renovar la landing page corporativa', 'ACTIVO', 1),
        (2, 'Migración Cloud', 'Mover la base de datos a AWS', 'ACTIVO', 1),
        (3, 'App Móvil v2', 'Nuevas funciones para iOS y Android', 'FINALIZADO',
-        3);
+        1);
 
 -- 4. TAREAS (Necesitan que los proyectos ya existan)
 INSERT IGNORE INTO tareas (id, proyecto_id, titulo, descripcion, prioridad, estado, fecha_limite)

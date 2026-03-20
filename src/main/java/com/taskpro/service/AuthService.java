@@ -1,6 +1,7 @@
 package com.taskpro.service;
 
 import com.taskpro.dao.UsuarioDAO;
+import com.taskpro.exception.AuthenticationException;
 import com.taskpro.model.Usuario;
 
 public class AuthService {
@@ -23,10 +24,10 @@ public class AuthService {
     public Usuario login(String email, String password) {
         Usuario usuario = usuarioDAO.buscarPorEmail(email);
 
-        if (usuario != null && usuario.getPassword().equals(password)) {
-            return usuario;
+        if (usuario == null || !usuario.getPassword().equals(password)) {
+            throw new AuthenticationException("Email o contraseña incorrectos. Inténtalo de nuevo.");
         }
 
-        return null;
+        return usuario;
     }
 }
